@@ -67,7 +67,7 @@ class YksikSoidukSpider(scrapy.Spider):
         self.session_id = settings.get('MY_SESSION_ID')
 #        self.mydate = date.today().strftime("%Y-%m-%d")
         #start_url = "https://www.auto24.ee/kasutatud/nimekiri.php?af=100"
-        start_url = "https://www.auto24.ee/soidukid/3947685"
+        start_url = "https://www.auto24.ee/soidukid/4057381"
         create_session(url=start_url, session_id = self.session_id)
         yield scrapy.Request(url=start_url)
 
