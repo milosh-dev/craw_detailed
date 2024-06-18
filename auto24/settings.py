@@ -107,7 +107,7 @@ COOKIES_DEBUG = True
 # FLARESOLVERR
 # URL of the FlareSolverr proxy server
 # MY_IP = "localhost"
-PRODUCTION = False
+PRODUCTION = True
 FLARESOLVERR_URL = "http://localhost:8191/v1"           #os.getenv("FLARESOLVERR_URL")
 MY_SESSION_ID = "0073b137-efe9-495d-a1a2-1541f0791007"  #os.getenv("MY_SESSION_ID")
 

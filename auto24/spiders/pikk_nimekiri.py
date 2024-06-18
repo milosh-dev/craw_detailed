@@ -1,11 +1,16 @@
 import scrapy, httpx, re, time
 from auto24.helpers.helper import (
     create_session,
-    delete_session
+    delete_session,
+    send_mail
 )
 from scrapy.utils.project import get_project_settings
 from auto24.items import AutoItem
 from datetime import date   # For getting current date
+
+from auto24.settings import (
+    PATH, PRODUCTION
+)
 
 class PikkNimekiriSpider(scrapy.Spider):
     name = "pikk_nimekiri"
@@ -22,6 +27,25 @@ class PikkNimekiriSpider(scrapy.Spider):
             "auto24.pipelines.AutoPipeline": 300,
         }
     }
+
+# EMAILi saatmiseks
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = super(PikkNimekiriSpider, cls).from_crawler(crawler, *args, **kwargs)
+        crawler.signals.connect(spider.feed_exporter_closed, signal=scrapy.signals.feed_exporter_closed)
+        return spider
+
+    def feed_exporter_closed(self):
+        stats = self.crawler.stats.get_stats()
+        print("start sending")
+        send_mail(
+            title = "Crawlab: " + self.name,
+            scraper = self.name,
+            message = f"Andmete kogumine on lõppenud\n\nStatistika on selline:\n{stats}"
+        )
+        print("end sending")
+
+# EMAILi saatmiseks
 
     def start_requests(self):
         settings=get_project_settings()
@@ -69,7 +93,7 @@ class PikkNimekiriSpider(scrapy.Spider):
         # Recreate session
         # create_session(url=next_page, session_id = self.session_id)
 
-        if len(next_page) != 0:
+        if (len(next_page) != 0) and PRODUCTION:
             next_page = "https://www.auto24.ee" + next_page[0]
         else:
             next_page = None

@@ -8,7 +8,7 @@ from scrapy.utils.project import get_project_settings
 from auto24.items import AutoItem
 
 from auto24.settings import (
-    PATH
+    PATH, PRODUCTION
 )
 
 # from scrapy.mail import MailSender

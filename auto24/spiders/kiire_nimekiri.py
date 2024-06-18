@@ -1,10 +1,15 @@
 import scrapy, httpx, re, time
 from auto24.helpers.helper import (
     create_session,
-    delete_session
+    delete_session,
+    send_mail
 )
 from scrapy.utils.project import get_project_settings
 from datetime import date   # For getting current date
+
+from auto24.settings import (
+    PATH, PRODUCTION
+)
 
 class KiireNimekiriSpider(scrapy.Spider):
     name = "kiire_nimekiri"
@@ -19,6 +24,25 @@ class KiireNimekiriSpider(scrapy.Spider):
     custom_settings = {
         'FEEDS': {"./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"}},
     }
+
+# EMAILi saatmiseks
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = super(KiireNimekiriSpider, cls).from_crawler(crawler, *args, **kwargs)
+        crawler.signals.connect(spider.feed_exporter_closed, signal=scrapy.signals.feed_exporter_closed)
+        return spider
+
+    def feed_exporter_closed(self):
+        stats = self.crawler.stats.get_stats()
+        print("start sending")
+        send_mail(
+            title = "Crawlab: " + self.name,
+            scraper = self.name,
+            message = f"Andmete kogumine on lõppenud\n\nStatistika on selline:\n{stats}"
+        )
+        print("end sending")
+
+# EMAILi saatmiseks
 
     def start_requests(self):
         settings=get_project_settings()
@@ -112,7 +136,7 @@ class KiireNimekiriSpider(scrapy.Spider):
         # Järgmise lehe nupp:
         # response.css('button.btn-right::attr(onclick)').re("href='(.*)'")[0]
         next_page = response.css('button.btn-right::attr(onclick)').re("href='(.*)'")
-        if len(next_page) != 0:
+        if (len(next_page) != 0) and PRODUCTION:
             next_page = "https://www.auto24.ee" + next_page[0]
         else:
             next_page = None
