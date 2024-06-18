@@ -6,6 +6,11 @@ from auto24.helpers.helper import (
 )
 from scrapy.utils.project import get_project_settings
 from auto24.items import AutoItem
+
+from auto24.settings import (
+    PATH
+)
+
 # from scrapy.mail import MailSender
 # import config
 # from datetime import date   # For getting current date
@@ -38,7 +43,8 @@ class YksikSoidukSpider(scrapy.Spider):
         #     "universe_domain": "googleapis.com"
         # },
         'FEEDS': {
-            "./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
+            PATH + "%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
+#            "./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
 #            "gdrive://drive.google.com/1mtRqiQGTz08L-W8BzGt9UK43yGunbo7s/%(name)s_%(time)s.csv": {"format": "csv"}
         },
     }

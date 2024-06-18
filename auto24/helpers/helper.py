@@ -1,8 +1,14 @@
 import httpx, json, logging, os, sys, time
+from auto24.settings import (
+    FLARESOLVERR_URL,
+    FLARESOLVERR_NR_SESSIONS,
+    FLARESOLVERR_TIMEOUT,
+    PATH
+)
 
-FLARESOLVERR_URL =  "http://localhost:8191/v1"
-FLARESOLVERR_NR_SESSIONS = 7
-FLARESOLVERR_TIMEOUT = 60000
+# FLARESOLVERR_URL =  "http://localhost:8191/v1"
+# FLARESOLVERR_NR_SESSIONS = 7
+# FLARESOLVERR_TIMEOUT = 60000
 
 # send a GET request with FlareSolverr
 # Author: https://scrapfly.io/blog/how-to-bypass-cloudflare-with-flaresolverr/
@@ -143,7 +149,8 @@ def send_mail(message:str, title:str, scraper:str):
     import smtplib
     from email.message import EmailMessage
 
-    path = "/home/raoul/scrapy/auto24/scraped_files/"
+    #path = "/home/raoul/scrapy/auto24/scraped_files/"
+    path = PATH
 
     msg = EmailMessage()
     msg['From'] = "raoul.lattemae@gmail.com"
