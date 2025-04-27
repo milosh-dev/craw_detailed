@@ -52,11 +52,11 @@ ROBOTSTXT_OBEY = False
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
+    "scrapy.downloadermiddlewares.retry.RetryMiddleware": 90,
     "auto24.flaresolverr.middlewares.FlareSolverrRetryMiddleware": 542,
     "auto24.flaresolverr.middlewares.FlareSolverrRedirectMiddleware": 541,
 #    "auto24.flaresolverr.middlewares.FlareSolverrGetSolutionStatusMiddleware": 540,
 #    "auto24.middlewares.Auto24DownloaderMiddleware": 543,
-    "scrapy.downloadermiddlewares.retry.RetryMiddleware": 90,
 }
 
 #DOWNLOAD_HANDLERS = {
@@ -108,21 +108,22 @@ COOKIES_DEBUG = True
 # URL of the FlareSolverr proxy server
 # MY_IP = "localhost"
 PRODUCTION = True
-FLARESOLVERR_URL = "http://localhost:8191/v1"           #os.getenv("FLARESOLVERR_URL")
+# FLARESOLVERR_URL = "http://localhost:8191/v1"           #os.getenv("FLARESOLVERR_URL")
+FLARESOLVERR_URL = "http://localhost:20080/v1"           #os.getenv("FLARESOLVERR_URL")
 MY_SESSION_ID = "0073b137-efe9-495d-a1a2-1541f0791007"  #os.getenv("MY_SESSION_ID")
 
 # PATH = "/data/"
 PATH = "/home/raoul/scrapy/auto24/scraped_files/"
 
 # How many sessions we will create
-FLARESOLVERR_NR_SESSIONS = 3
+FLARESOLVERR_NR_SESSIONS = 50
 # Timeout for Flaresolverr
-FLARESOLVERR_TIMEOUT = 60000
+FLARESOLVERR_TIMEOUT = 2400000
 
 # Enable and configure retry middleware
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#module-scrapy.downloadermiddlewares.retry
 RETRY_ENABLED = True
 # Maximum number of times to retry, in addition to the first download.
-RETRY_TIMES = 4
+RETRY_TIMES = 50
 # Which HTTP response codes to retry.
-RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 404, 408, 429]
+RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 422, 404, 408, 429]

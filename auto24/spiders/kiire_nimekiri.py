@@ -22,7 +22,12 @@ class KiireNimekiriSpider(scrapy.Spider):
 
     # This defines the scraped files
     custom_settings = {
-        'FEEDS': {"./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"}},
+        'FEEDS': {
+            PATH + "%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
+#            "./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
+#            "gdrive://drive.google.com/1mtRqiQGTz08L-W8BzGt9UK43yGunbo7s/%(name)s_%(time)s.csv": {"format": "csv"}
+        },
+#        'FEEDS': {"./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"}},
     }
 
 # EMAILi saatmiseks

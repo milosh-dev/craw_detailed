@@ -5,6 +5,7 @@ from auto24.settings import (
     FLARESOLVERR_TIMEOUT,
     PATH
 )
+from datetime import datetime
 
 # FLARESOLVERR_URL =  "http://localhost:8191/v1"
 # FLARESOLVERR_NR_SESSIONS = 7
@@ -39,6 +40,7 @@ def create_session(url: str, session_id:str = ""):
             }
         # send the POST request using httpx
         response = httpx.post(url=FLARESOLVERR_URL, headers=r_headers, json=payload, timeout=FLARESOLVERR_TIMEOUT)
+        logging.info("Saatsin FLARESOLVERR_URL aadressile")
         # Save response
         # self.response = response
         # Save session data for url
@@ -143,6 +145,90 @@ def newest(path):
     files = os.listdir(path)
     paths = [os.path.join(path, basename) for basename in files]
     return max(paths, key=os.path.getctime)
+
+# Prepare email text
+def prepare_message(json_str):
+    #data = json.loads(json_str)
+
+    # Defineeri kuupäevaformaat
+    def format_datetime(value):
+        """
+        Kui 'value' on kuupäeva/kellaaeg ISO 8601 kujul, tagastab funktsioon selle vormindatuna kujule "dd.mm.yyyy hh:mm".
+        Kui pole, tagastatakse väärtus muutmata.
+        """
+        if isinstance(value, str):
+            try:
+                dt = datetime.fromisoformat(value)
+                return dt.strftime("%d.%m.%Y %H:%M")
+            except ValueError:
+                # Kui stringi ei saa kuupäevaks parsida, tagastame algse väärtuse
+                return value
+        return value
+
+    # Algatame tühjad andmestruktuurid tabelite ja üldiste (slash-vabade) väljade jaoks
+    tables = {}         # Näiteks: {'log_count': {'WARNING': 1, 'DEBUG': 3610, 'INFO': 71}, ...}
+    general_fields = {} # Väljad, mis ei sisalda kaldkriipsu võtmes
+
+    # Itereerime läbi kõik andmed
+    for key, value in json_str.items():
+        # Proovime vormindada võimalikke kuupäeva/kellaaja väärtusi
+        value = format_datetime(value)
+        
+        if "/" in key:
+            # Jagame võtme esimese kaldkriipsu juures: esimene osa on tabeli nimi, teine osa reali nimetus
+            table_name, sub_key = key.split("/", 1)
+            if table_name not in tables:
+                tables[table_name] = {}
+            tables[table_name][sub_key] = value
+        else:
+            general_fields[key] = value
+
+    # Koostame e‑kirja tekstilise sisu
+    email_body = ""
+
+    # Lisame üldised väljad (ilma kaldkriipsuta võtmetena)
+    if general_fields:
+        email_body += "Üldinfo:\n"
+        for k, v in general_fields.items():
+            email_body += f"  {k}: {v}\n"
+        email_body += "\n"
+
+    # Itereerime tabelite üle ja lisame iga tabeli andmed
+    for table, rows in tables.items():
+        email_body += f"Tabel: {table}\n"
+        for sub_key, val in rows.items():
+            email_body += f"  {sub_key}: {val}\n"
+        email_body += "\n"
+
+    # Väljundiks saab välja näha midagi sellist:
+    # General fields:
+    #   start_time: 07.04.2025 19:47
+    #   item_scraped_count: 1786
+    #   elapsed_time_seconds: 3597.978227
+    #   finish_time: 07.04.2025 20:47
+    #   finish_reason: finished
+    #   responses_per_minute: None
+    #   items_per_minute: None
+    #
+    # Table: log_count
+    #   WARNING: 1
+    #   DEBUG: 3610
+    #   INFO: 71
+    #   ERROR: 11
+    #
+    # Table: memusage
+    #   startup: 64778240
+    #   max: 135413760
+    #
+    # Table: scheduler
+    #   enqueued/memory: 3630
+    #   enqueued: 3630
+    #   dequeued/memory: 3630
+    #   dequeued: 3630
+    #
+    # ... ja nii edasi.
+    return email_body
+
 
 # Send email
 def send_mail(message:str, title:str, scraper:str):

@@ -2,7 +2,8 @@ import scrapy, httpx, re, time
 from auto24.helpers.helper import (
     create_session,
     delete_session,
-    send_mail
+    send_mail,
+    prepare_message
 )
 from scrapy.utils.project import get_project_settings
 from auto24.items import AutoItem
@@ -14,15 +15,22 @@ from auto24.settings import (
 
 class PikkNimekiriSpider(scrapy.Spider):
     name = "pikk_nimekiri"
-    allowed_domains = ["www.auto24.ee"]
+    allowed_domains = ["www.auto24.ee", "localhost", "192.168.1.17"]
     # start_urls = ["https://www.auto24.ee/soidukid/4005053"]
     counter = 0
     reset = 50
     pause = 3
     mydate = ""
 
+    # Teiseks faasiks salvestame kõik toodete lingid
+    all_product_links = []
+
     custom_settings = {
-        'FEEDS': {"./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"}},
+        'FEEDS': {
+            PATH + "%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
+#            "./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
+#            "gdrive://drive.google.com/1mtRqiQGTz08L-W8BzGt9UK43yGunbo7s/%(name)s_%(time)s.csv": {"format": "csv"}
+        },
         "ITEM_PIPELINES" : {
             "auto24.pipelines.AutoPipeline": 300,
         }
@@ -38,10 +46,16 @@ class PikkNimekiriSpider(scrapy.Spider):
     def feed_exporter_closed(self):
         stats = self.crawler.stats.get_stats()
         print("start sending")
+        
+        try:
+            sisu = prepare_message(stats)
+        except:
+            sisu = f"Andmete kogumine on lõppenud\n\nStatistika on selline:\n{stats}"
+        
         send_mail(
             title = "Crawlab: " + self.name,
             scraper = self.name,
-            message = f"Andmete kogumine on lõppenud\n\nStatistika on selline:\n{stats}"
+            message = sisu
         )
         print("end sending")
 
@@ -51,10 +65,10 @@ class PikkNimekiriSpider(scrapy.Spider):
         settings=get_project_settings()
         self.session_id = settings.get('MY_SESSION_ID')
         self.mydate = date.today().strftime("%Y-%m-%d")
-        #start_url = "https://www.auto24.ee/kasutatud/nimekiri.php?bn=2&a=100&ad=1&ae=8&af=50"
+        # start_url = "https://www.auto24.ee/kasutatud/nimekiri.php?ae=8&af=100&ak=17500"
         start_url = "https://www.auto24.ee/kasutatud/nimekiri.php?ae=8&af=100"
         #create_session(url=start_url, session_id = self.session_id)
-        yield scrapy.Request(url=start_url)
+        yield scrapy.Request(url=start_url, meta={"use_session": True})
 
     def closed(self, reason):
         # Called when the spider closes. 
@@ -73,7 +87,7 @@ class PikkNimekiriSpider(scrapy.Spider):
             #self.crawler.engine.unpause()
             yield scrapy.Request(
                 url = auto, 
-                meta={"dont_filter": True},
+                meta={"dont_filter": True, "use_session": True},
                 callback=self.parse_auto, 
                 cb_kwargs = {
                     'url': auto,
@@ -100,8 +114,37 @@ class PikkNimekiriSpider(scrapy.Spider):
         if next_page is not None:
             yield scrapy.Request(
                 url=next_page,
-                meta={"dont_filter": True}
+                meta={"dont_filter": True, "use_session": True}
             )        
+
+    def parse_lk_enne(self, response):
+        # Kogu lehe toodete lingid ja salvesta need globaalsetesse linkidesse
+        urls = response.css('.row-link::attr(href)').getall()
+        for url in urls:
+            full_url = "https://www.auto24.ee" + url
+            print(full_url)
+            self.all_product_links.append(full_url)
+
+        # Otsi edasi järgmise lehekülje linki
+        next_page = response.css('button.btn-right::attr(onclick)').re("href='(.*)'")
+        if (len(next_page) != 0) and self.counter < 5: #and PRODUCTION:
+            next_page = "https://www.auto24.ee" + next_page[0]
+            self.counter = self.counter + 1
+            print("------------ UUS LEHEKÜLG ------------")
+            yield scrapy.Request(
+                url=next_page,
+                meta={"dont_filter": True, "use_session": True},
+                callback=self.parse
+            )
+        else:
+            # Kõik leheküljed on läbi käidud – nüüd käi läbi salvestatud toodete lingid
+            for product_url in self.all_product_links:
+                yield scrapy.Request(
+                    url=product_url,
+                    meta={"dont_filter": True, "use_session": True},
+                    callback=self.parse_auto,
+                    cb_kwargs={'url': product_url}
+                )
         
     def parse_auto(self, response, url):
         auto = AutoItem()
@@ -129,7 +172,7 @@ class PikkNimekiriSpider(scrapy.Spider):
         auto["Pikkus"] = response.css("tr:contains('pikkus') td.value::text").get()
         auto["Laius"] = response.css("tr:contains('laius') td.value::text").get()
         auto["Kõrgus"] = response.css("tr:contains('kõrgus') td.value::text").get()
-        auto["Teljevahe"] = response.css("tr:contains('kõrgus') td.value::text").get()
+        auto["Teljevahe"] = response.css("tr:contains('teljevahe:') td.value::text").get()
         auto["Hind"] = response.css(".field-hind span.value::text").get()
         auto["Soodushind"] = response.css(".field-soodushind span.value::text").get()
         auto["Liigitus"] = response.css("a.b-breadcrumbs__item:nth-of-type(1)::text").get()
@@ -141,3 +184,4 @@ class PikkNimekiriSpider(scrapy.Spider):
         auto["Kubatuur"] = response.css("tr:contains('maht') td:contains('cm').value::text").get()
 
         yield auto
+

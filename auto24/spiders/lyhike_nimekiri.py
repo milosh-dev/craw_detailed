@@ -2,7 +2,8 @@ import scrapy, httpx, re, time
 from auto24.helpers.helper import (
     create_session,
     delete_session,
-    send_mail
+    send_mail,
+    prepare_message
 )
 from scrapy.utils.project import get_project_settings
 from datetime import date   # For getting current date
@@ -13,7 +14,7 @@ from auto24.settings import (
 
 class LyhikeNimekiriSpider(scrapy.Spider):
     name = "lyhike_nimekiri"
-    allowed_domains = ["www.auto24.ee"]
+    allowed_domains = ["www.auto24.ee", "localhost", "192.168.1.17"]
     # start_urls = ["https://www.auto24.ee/robots.txt"]
     counter = 0
     reset = 12
@@ -22,7 +23,12 @@ class LyhikeNimekiriSpider(scrapy.Spider):
 
     # This defines the scraped files
     custom_settings = {
-        'FEEDS': {"./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"}},
+        'FEEDS': {
+            PATH + "%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
+#            "./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"},
+#            "gdrive://drive.google.com/1mtRqiQGTz08L-W8BzGt9UK43yGunbo7s/%(name)s_%(time)s.csv": {"format": "csv"}
+        },
+#        'FEEDS': {"./scraped_files/%(name)s/%(name)s_%(time)s.csv" : {"format": "csv"}},
     }
 
 # EMAILi saatmiseks
@@ -34,12 +40,21 @@ class LyhikeNimekiriSpider(scrapy.Spider):
 
     def feed_exporter_closed(self):
         stats = self.crawler.stats.get_stats()
+
+        try:
+            sisu = prepare_message(stats)
+        except:
+            sisu = f"{stats}"
+
         print("start sending")
-        send_mail(
-            title = "Crawlab: " + self.name,
-            scraper = self.name,
-            message = f"Andmete kogumine on lõppenud\n\nStatistika on selline:\n{stats}"
-        )
+        if PRODUCTION:
+            send_mail(
+                title = "Crawlab: " + self.name,
+                scraper = self.name,
+                message = sisu
+            )
+        else:
+            print(sisu)
         print("end sending")
 
 # EMAILi saatmiseks
@@ -100,5 +115,5 @@ class LyhikeNimekiriSpider(scrapy.Spider):
 
 
             self.counter += 1
-            yield scrapy.Request(url=next_page, dont_filter = True)
+            yield scrapy.Request(url=next_page, dont_filter = True, meta={"use_session": True})
             #yield response.follow(next_page, self.parse)
